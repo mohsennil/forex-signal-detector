@@ -10,7 +10,7 @@ import smtplib
 from email.mime.text import MimeText
 from email.mime.multipart import MimeMultipart
 
-class AdvancedForexDetector:
+class YahooForexDetector:
     def __init__(self):
         # تنظیمات اندیکاتور
         self.fast_ma = 20
@@ -25,13 +25,13 @@ class AdvancedForexDetector:
         self.last_signals = {}
         self.signal_count = 0
         
-        # تنظیمات ایمیل
+        # تنظیمات ایمیل یاهو
         self.email_enabled = True
-        self.smtp_server = "smtp.gmail.com"
+        self.smtp_server = "smtp.mail.yahoo.com"  # سرور یاهو
         self.smtp_port = 587
-        self.email_from = "your_email@gmail.com"  # تغییر بده
-        self.email_password = "your_app_password"  # تغییر بده
-        self.email_to = "your_email@gmail.com"  # تغییر بده
+        self.email_from = "your_email@yahoo.com"  # تغییر بده
+        self.email_password = "your_app_password"  # تغییر بده - App Password
+        self.email_to = "your_email@yahoo.com"  # تغییر بده
         
         # تنظیمات ساعات کاری بازار (24 ساعته)
         self.market_hours = {
@@ -39,16 +39,24 @@ class AdvancedForexDetector:
             'end': 23      # 23:59
         }
         
+        # تنظیمات قابل تغییر از طریق environment variables
+        self.check_interval = int(os.getenv('CHECK_INTERVAL', '1'))  # دقیقه
+        self.market_start = int(os.getenv('MARKET_START', '0'))  # ساعت شروع
+        self.market_end = int(os.getenv('MARKET_END', '23'))    # ساعت پایان
+        
         # برای GitHub Actions
         self.is_github_actions = os.getenv('GITHUB_ACTIONS') is not None
         self.artifacts_dir = os.getenv('GITHUB_WORKSPACE', '.')
         self.signals_file = os.path.join(self.artifacts_dir, 'signals.json')
-        self.summary_file = os.path.join(self.artifacts_dir, 'summary.md')
         
         # لاگ اولین اجرا
         self.first_run = True
         
-        print("🚀 سیستم پیشرفته تشخیص پولبک - GitHub Actions")
+        print("🚀 سیستم تشخیص پولبک - ایمیل یاهو")
+        print("=" * 60)
+        print(f"📧 ایمیل: {self.email_from}")
+        print(f"⏰ چک هر: {self.check_interval} دقیقه")
+        print(f"🕒 ساعات بازار: {self.market_start}:00 - {self.market_end}:59")
         print("=" * 60)
         
         self.initialize_historical_data()
@@ -56,11 +64,12 @@ class AdvancedForexDetector:
     def is_market_open(self):
         """بررسی اینکه آیا بازار باز است"""
         current_hour = datetime.now().hour
-        return self.market_hours['start'] <= current_hour <= self.market_hours['end']
+        return self.market_start <= current_hour <= self.market_end
 
     def send_email(self, subject, body, is_startup=False):
-        """ارسال ایمیل"""
+        """ارسال ایمیل با یاهو"""
         if not self.email_enabled:
+            print("   ⚠️ ارسال ایمیل غیرفعال است")
             return False
             
         try:
@@ -70,26 +79,33 @@ class AdvancedForexDetector:
             msg['To'] = self.email_to
             msg['Subject'] = subject
             
-            # محتوای ایمیل
+            # محتوای ایمیل به صورت HTML
             html_body = f"""
             <html>
-                <body dir="rtl">
-                    <h2 style="color: #2E86AB;">{subject}</h2>
-                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px;">
-                        {body.replace('\n', '<br>')}
+                <head>
+                    <meta charset="utf-8">
+                </head>
+                <body dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6;">
+                    <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                        <h2 style="color: #2E86AB; text-align: center; border-bottom: 2px solid #2E86AB; padding-bottom: 10px;">
+                            {subject}
+                        </h2>
+                        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                            {body.replace('\n', '<br>')}
+                        </div>
+                        <div style="text-align: center; color: #666; font-size: 12px; margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd;">
+                            <p>🤖 ارسال شده توسط سیستم اتوماتیک فارکس</p>
+                            <p>⏰ زمان: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                        </div>
                     </div>
-                    <br>
-                    <p style="color: #666; font-size: 12px;">
-                        🤖 ارسال شده توسط سیستم اتوماتیک فارکس<br>
-                        ⏰ زمان: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-                    </p>
                 </body>
             </html>
             """
             
             msg.attach(MimeText(html_body, 'html'))
             
-            # ارسال ایمیل
+            # ارسال ایمیل با یاهو
+            print(f"   📧 در حال اتصال به سرور یاهو...")
             server = smtplib.SMTP(self.smtp_server, self.smtp_port)
             server.starttls()
             server.login(self.email_from, self.email_password)
@@ -97,11 +113,11 @@ class AdvancedForexDetector:
             server.sendmail(self.email_from, self.email_to, text)
             server.quit()
             
-            print(f"   📧 ایمیل ارسال شد: {subject}")
+            print(f"   ✅ ایمیل ارسال شد: {subject}")
             return True
             
         except Exception as e:
-            print(f"   ❌ خطا در ارسال ایمیل: {e}")
+            print(f"   ❌ خطا در ارسال ایمیل یاهو: {e}")
             return False
 
     def send_startup_email(self):
@@ -118,31 +134,32 @@ class AdvancedForexDetector:
         • EMA سریع/کند: {self.fast_ma}/{self.slow_ma}
         • پولبک: {self.max_pullback} کندل
         • تغییر RSI: ±{self.min_rsi_change}
-        • ساعات بازار: {self.market_hours['start']}:00 - {self.market_hours['end']}:59
+        • ساعات بازار: {self.market_start}:00 - {self.market_end}:59
+        • چک هر: {self.check_interval} دقیقه
 
-        ⏰ سیستم هر 1 دقیقه بازار را چک می‌کند و در صورت شناسایی سیگنال، این ایمیل را دریافت خواهید کرد.
+        🔔 سیستم هر {self.check_interval} دقیقه بازار را چک می‌کند و در صورت شناسایی سیگنال، این ایمیل را دریافت خواهید کرد.
 
-        🔔 اولین سیگنال به زودی...
+        📈 اولین سیگنال به زودی...
         """
         
-        self.send_email(subject, body, is_startup=True)
-        self.first_run = False
+        if self.send_email(subject, body, is_startup=True):
+            self.first_run = False
 
     def send_signal_email(self, pair, signal, price, rsi, trend):
         """ارسال ایمیل سیگنال"""
-        subject = f"🎯 سیگنال {signal} - {pair}"
-        
         if signal == "BUY":
-            color = "#28a745"
-            emoji = "🟢"
+            color_emoji = "🟢"
             action = "خرید"
+            action_emoji = "📈"
         else:
-            color = "#dc3545" 
-            emoji = "🔴"
-            action = "فروش"
+            color_emoji = "🔴"
+            action = "فروش" 
+            action_emoji = "📉"
+        
+        subject = f"{action_emoji} سیگنال {action} - {pair}"
         
         body = f"""
-        {emoji} <strong>سیگنال {action} شناسایی شد!</strong>
+        {color_emoji} <strong>سیگنال {action} شناسایی شد!</strong>
 
         💰 <strong>جفت ارز:</strong> {pair}
         📈 <strong>سیگنال:</strong> {signal}
@@ -155,7 +172,7 @@ class AdvancedForexDetector:
         • RSI از 50 {f'+{self.min_rsi_change}' if signal == 'SELL' else f'-{self.min_rsi_change}'} عبور کرد
         • کندل فعلی {signal == 'SELL' and 'صعودی' or 'نزولی'}
 
-        ⏰ <strong>زمان:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        ⏰ <strong>زمان شناسایی:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
         💡 <strong>توصیه:</strong> شرایط بازار را بررسی کرده و مدیریت ریسک را رعایت کنید.
         """
@@ -163,7 +180,7 @@ class AdvancedForexDetector:
         self.send_email(subject, body)
 
     def initialize_historical_data(self):
-        print("📡 دریافت قیمت‌های فعلی...")
+        print("📡 دریافت قیمت‌های فعلی برای ساخت داده تاریخی...")
         for pair in self.forex_pairs:
             current_price_data = self.get_yahoo_live_price(pair)
             if current_price_data:
@@ -398,6 +415,6 @@ class AdvancedForexDetector:
         return len(all_signals)
 
 if __name__ == "__main__":
-    detector = AdvancedForexDetector()
+    detector = YahooForexDetector()
     signals_found = detector.run_single_check()
     sys.exit(0 if signals_found >= 0 else 1)

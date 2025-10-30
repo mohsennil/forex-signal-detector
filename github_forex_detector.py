@@ -29,9 +29,9 @@ class YahooForexDetector:
         self.email_enabled = True
         self.smtp_server = "smtp.mail.yahoo.com"  # سرور یاهو
         self.smtp_port = 587
-        self.email_from = "your_email@yahoo.com"  # تغییر بده
-        self.email_password = "your_app_password"  # تغییر بده - App Password
-        self.email_to = "your_email@yahoo.com"  # تغییر بده
+        self.email_from = "mohsennil@yahoo.com"  # تغییر بده
+        self.email_password = "wjcoikgocohijnlf"  # تغییر بده - App Password
+        self.email_to = "mohsennil@yahoo.com"  # تغییر بده
         
         # تنظیمات ساعات کاری بازار (24 ساعته)
         self.market_hours = {
@@ -418,3 +418,4 @@ if __name__ == "__main__":
     detector = YahooForexDetector()
     signals_found = detector.run_single_check()
     sys.exit(0 if signals_found >= 0 else 1)
+

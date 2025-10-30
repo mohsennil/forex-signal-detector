@@ -2,7 +2,7 @@ name: Forex Signal Detector
 
 on:
   schedule:
-    # هر 30 دقیقه اجرا شود (می‌تونی تغییر بدی)
+    # هر 30 دقیقه اجرا شود
     - cron: '*/30 * * * *'
   workflow_dispatch:  # امکان اجرای دستی
   push:
@@ -15,13 +15,12 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-        cache: 'pip'
         
     - name: Install dependencies
       run: |
@@ -29,14 +28,13 @@ jobs:
         pip install -r requirements.txt
         
     - name: Run Forex Detector
-      id: detector
       run: |
         echo "🔄 شروع تحلیل جفت ارزها..."
         python github_forex_detector.py
         echo "✅ تحلیل کامل شد"
         
     - name: Upload signals as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: forex-signals
         path: |
@@ -44,16 +42,11 @@ jobs:
           summary.md
         retention-days: 30
         
-    - name: Commit and push if signals found
+    - name: Display summary
       run: |
-        if [ -f signals.json ] && [ -s signals.json ]; then
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add signals.json summary.md
-          git commit -m "🤖 Update forex signals - $(date +'%Y-%m-%d %H:%M')"
-          git push
+        if [ -f summary.md ]; then
+          echo "📊 خلاصه نتایج:"
+          cat summary.md
         else
-          echo "No new signals to commit"
+          echo "❌ فایل خلاصه ایجاد نشد"
         fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

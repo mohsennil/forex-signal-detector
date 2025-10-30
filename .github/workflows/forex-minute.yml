@@ -13,8 +13,8 @@ jobs:
     
     env:
       CHECK_INTERVAL: 1
-      MARKET_START: 0
-      MARKET_END: 23
+      MARKET_START: 8
+      MARKET_END: 18
     
     steps:
     - name: Checkout repository

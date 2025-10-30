@@ -7,8 +7,8 @@ import json
 import os
 import sys
 import smtplib
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 class YahooForexDetector:
     def __init__(self):
@@ -63,7 +63,7 @@ class YahooForexDetector:
             
         try:
             # ایجاد ایمیل
-            msg = MimeMultipart()
+            msg = MIMEMultipart()
             msg['From'] = self.email_from
             msg['To'] = self.email_to
             msg['Subject'] = subject
@@ -92,7 +92,7 @@ class YahooForexDetector:
             </html>
             """
             
-            msg.attach(MimeText(html_body, 'html'))
+            msg.attach(MIMEText(html_body, 'html'))
             
             # ارسال ایمیل با یاهو
             print(f"   📧 در حال اتصال به سرور یاهو...")
@@ -116,14 +116,14 @@ class YahooForexDetector:
             return
             
         subject = "🚀 سیستم فارکس فعال شد"
-        body = f"""سیستم تشخیص سیگنال‌های پولبک با موفقیت فعال شد.
+        body = """سیستم تشخیص سیگنال‌های پولبک با موفقیت فعال شد.
 
 📊 تنظیمات سیستم:
-• جفت ارزها: {', '.join(self.forex_pairs)}
-• EMA سریع/کند: {self.fast_ma}/{self.slow_ma}
-• پولبک: {self.max_pullback} کندل
-• تغییر RSI: ±{self.min_rsi_change}
-• ساعات بازار: {self.market_start}:00 - {self.market_end}:59
+• جفت ارزها: EURUSD, GBPUSD, AUDUSD, USDCHF, USDCAD
+• EMA سریع/کند: 20/50
+• پولبک: 3 کندل
+• تغییر RSI: ±10.0
+• ساعات بازار: 0:00 - 23:59
 
 🔔 سیستم هر 1 دقیقه بازار را چک می‌کند و در صورت شناسایی سیگنال، این ایمیل را دریافت خواهید کرد.
 
@@ -158,7 +158,7 @@ class YahooForexDetector:
 🎯 روند کلی: {trend}
 
 ⚙️ شرایط شناسایی:
-• پولبک {self.max_pullback} کندلی تمام شد
+• پولبک 3 کندلی تمام شد
 • RSI از 50 {rsi_change_text} عبور کرد
 • کندل فعلی {candle_type}
 

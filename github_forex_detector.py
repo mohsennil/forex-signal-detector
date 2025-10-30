@@ -6,20 +6,38 @@ from datetime import datetime, timedelta
 import json
 import os
 import sys
+import smtplib
+from email.mime.text import MimeText
+from email.mime.multipart import MimeMultipart
 
-class GitHubForexDetector:
+class AdvancedForexDetector:
     def __init__(self):
-        # تنظیمات
+        # تنظیمات اندیکاتور
         self.fast_ma = 20
         self.slow_ma = 50
         self.max_pullback = 3
         self.min_rsi_change = 10.0
         self.rsi_period = 14
         
+        # جفت ارزهای مورد نظر
         self.forex_pairs = ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCHF', 'USDCAD']
         self.historical_data = {}
         self.last_signals = {}
         self.signal_count = 0
+        
+        # تنظیمات ایمیل
+        self.email_enabled = True
+        self.smtp_server = "smtp.gmail.com"
+        self.smtp_port = 587
+        self.email_from = "your_email@gmail.com"  # تغییر بده
+        self.email_password = "your_app_password"  # تغییر بده
+        self.email_to = "your_email@gmail.com"  # تغییر بده
+        
+        # تنظیمات ساعات کاری بازار (24 ساعته)
+        self.market_hours = {
+            'start': 0,    # 00:00
+            'end': 23      # 23:59
+        }
         
         # برای GitHub Actions
         self.is_github_actions = os.getenv('GITHUB_ACTIONS') is not None
@@ -27,10 +45,122 @@ class GitHubForexDetector:
         self.signals_file = os.path.join(self.artifacts_dir, 'signals.json')
         self.summary_file = os.path.join(self.artifacts_dir, 'summary.md')
         
-        print("🚀 سیستم تشخیص پولبک - GitHub Actions")
+        # لاگ اولین اجرا
+        self.first_run = True
+        
+        print("🚀 سیستم پیشرفته تشخیص پولبک - GitHub Actions")
         print("=" * 60)
         
         self.initialize_historical_data()
+
+    def is_market_open(self):
+        """بررسی اینکه آیا بازار باز است"""
+        current_hour = datetime.now().hour
+        return self.market_hours['start'] <= current_hour <= self.market_hours['end']
+
+    def send_email(self, subject, body, is_startup=False):
+        """ارسال ایمیل"""
+        if not self.email_enabled:
+            return False
+            
+        try:
+            # ایجاد ایمیل
+            msg = MimeMultipart()
+            msg['From'] = self.email_from
+            msg['To'] = self.email_to
+            msg['Subject'] = subject
+            
+            # محتوای ایمیل
+            html_body = f"""
+            <html>
+                <body dir="rtl">
+                    <h2 style="color: #2E86AB;">{subject}</h2>
+                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px;">
+                        {body.replace('\n', '<br>')}
+                    </div>
+                    <br>
+                    <p style="color: #666; font-size: 12px;">
+                        🤖 ارسال شده توسط سیستم اتوماتیک فارکس<br>
+                        ⏰ زمان: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                    </p>
+                </body>
+            </html>
+            """
+            
+            msg.attach(MimeText(html_body, 'html'))
+            
+            # ارسال ایمیل
+            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+            server.starttls()
+            server.login(self.email_from, self.email_password)
+            text = msg.as_string()
+            server.sendmail(self.email_from, self.email_to, text)
+            server.quit()
+            
+            print(f"   📧 ایمیل ارسال شد: {subject}")
+            return True
+            
+        except Exception as e:
+            print(f"   ❌ خطا در ارسال ایمیل: {e}")
+            return False
+
+    def send_startup_email(self):
+        """ارسال ایمیل استارتاپ"""
+        if not self.first_run:
+            return
+            
+        subject = "🚀 سیستم فارکس فعال شد"
+        body = f"""
+        سیستم تشخیص سیگنال‌های پولبک با موفقیت فعال شد.
+
+        📊 تنظیمات سیستم:
+        • جفت ارزها: {', '.join(self.forex_pairs)}
+        • EMA سریع/کند: {self.fast_ma}/{self.slow_ma}
+        • پولبک: {self.max_pullback} کندل
+        • تغییر RSI: ±{self.min_rsi_change}
+        • ساعات بازار: {self.market_hours['start']}:00 - {self.market_hours['end']}:59
+
+        ⏰ سیستم هر 1 دقیقه بازار را چک می‌کند و در صورت شناسایی سیگنال، این ایمیل را دریافت خواهید کرد.
+
+        🔔 اولین سیگنال به زودی...
+        """
+        
+        self.send_email(subject, body, is_startup=True)
+        self.first_run = False
+
+    def send_signal_email(self, pair, signal, price, rsi, trend):
+        """ارسال ایمیل سیگنال"""
+        subject = f"🎯 سیگنال {signal} - {pair}"
+        
+        if signal == "BUY":
+            color = "#28a745"
+            emoji = "🟢"
+            action = "خرید"
+        else:
+            color = "#dc3545" 
+            emoji = "🔴"
+            action = "فروش"
+        
+        body = f"""
+        {emoji} <strong>سیگنال {action} شناسایی شد!</strong>
+
+        💰 <strong>جفت ارز:</strong> {pair}
+        📈 <strong>سیگنال:</strong> {signal}
+        💵 <strong>قیمت فعلی:</strong> {price:.5f}
+        📊 <strong>RSI:</strong> {rsi:.1f}
+        🎯 <strong>روند کلی:</strong> {trend}
+
+        ⚙️ <strong>شرایط شناسایی:</strong>
+        • پولبک {self.max_pullback} کندلی تمام شد
+        • RSI از 50 {f'+{self.min_rsi_change}' if signal == 'SELL' else f'-{self.min_rsi_change}'} عبور کرد
+        • کندل فعلی {signal == 'SELL' and 'صعودی' or 'نزولی'}
+
+        ⏰ <strong>زمان:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+        💡 <strong>توصیه:</strong> شرایط بازار را بررسی کرده و مدیریت ریسک را رعایت کنید.
+        """
+        
+        self.send_email(subject, body)
 
     def initialize_historical_data(self):
         print("📡 دریافت قیمت‌های فعلی...")
@@ -189,38 +319,6 @@ class GitHubForexDetector:
         except Exception as e:
             print(f"   ❌ خطا در ذخیره: {e}")
 
-    def create_summary(self, all_signals):
-        """ایجاد فایل خلاصه"""
-        try:
-            summary_content = [
-                "# 📊 خلاصه سیگنال‌های فارکس",
-                f"**تاریخ تولید:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                f"**تعداد سیگنال‌ها:** {len(all_signals)}",
-                "",
-                "## 🎯 سیگنال‌های شناسایی شده:",
-                ""
-            ]
-            
-            for pair, signal, current, trend, price in all_signals:
-                summary_content.extend([
-                    f"### {pair} - {signal}",
-                    f"- **قیمت:** {price:.5f}",
-                    f"- **RSI:** {current['rsi']:.1f}",
-                    f"- **روند:** {trend}",
-                    f"- **زمان:** {datetime.now().strftime('%H:%M:%S')}",
-                    ""
-                ])
-            
-            if not all_signals:
-                summary_content.append("⚠️ هیچ سیگنالی در این اجرا شناسایی نشد")
-            
-            with open(self.summary_file, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(summary_content))
-                
-            print("   📄 فایل خلاصه ایجاد شد")
-        except Exception as e:
-            print(f"   ❌ خطا در ایجاد خلاصه: {e}")
-
     def analyze_pair(self, pair):
         print(f"🔎 تحلیل {pair}:")
         
@@ -258,8 +356,19 @@ class GitHubForexDetector:
 
     def run_single_check(self):
         """اجرای یک چک کامل"""
-        print(f"\n🔄 اجرا در: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        current_time = datetime.now()
+        
+        # بررسی ساعات بازار
+        if not self.is_market_open():
+            print(f"⏸️ بازار بسته است ({current_time.strftime('%H:%M')}) - چک بعدی...")
+            return 0
+        
+        print(f"\n🔄 چک بازار - {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print("-" * 50)
+        
+        # ایمیل استارتاپ در اولین اجرا
+        if self.first_run:
+            self.send_startup_email()
         
         all_signals = []
         
@@ -269,30 +378,26 @@ class GitHubForexDetector:
             if signal in ["BUY", "SELL"]:
                 all_signals.append((pair, signal, current, trend, price))
                 print(f"   🎯 {pair} {signal} شناسایی شد!")
+                
+                # ارسال ایمیل سیگنال
+                self.send_signal_email(pair, signal, price, current['rsi'], trend)
+                
             else:
                 if signal != "DUPLICATE":
                     print(f"   📊 {pair}: {signal}")
         
         if all_signals:
-            print(f"\n🎯 {len(all_signals)} سیگنال شناسایی شد")
+            print(f"\n🎯 {len(all_signals)} سیگنال شناسایی شد و ایمیل ارسال گردید")
             
             for pair, signal, current, trend, price in all_signals:
                 self.signal_count += 1
                 self.save_signal(pair, signal, price, current['rsi'], trend)
-            
-            # ایجاد خلاصه
-            self.create_summary(all_signals)
         else:
             print(f"\n📊 هیچ سیگنالی در این چک شناسایی نشد")
-            
-            # ایجاد خلاصه خالی
-            self.create_summary([])
         
         return len(all_signals)
 
 if __name__ == "__main__":
-    detector = GitHubForexDetector()
+    detector = AdvancedForexDetector()
     signals_found = detector.run_single_check()
-    
-    # خروج با کد مناسب برای GitHub Actions
     sys.exit(0 if signals_found >= 0 else 1)

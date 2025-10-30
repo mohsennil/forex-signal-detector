@@ -29,9 +29,9 @@ class YahooForexDetector:
         self.email_enabled = True
         self.smtp_server = "smtp.mail.yahoo.com"
         self.smtp_port = 587
-        self.email_from = "your_email@yahoo.com"  # تغییر بده
-        self.email_password = "your_app_password"  # تغییر بده
-        self.email_to = "your_email@yahoo.com"    # تغییر بده
+        self.email_from = "mohsennil@yahoo.com"  # تغییر بده
+        self.email_password = "wjcoikgocohijnlf"  # تغییر بده
+        self.email_to = "mohsennil@yahoo.com"    # تغییر بده
         
         # تنظیمات ساعات بازار
         self.market_start = 0

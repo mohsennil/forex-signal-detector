@@ -1,13 +1,8 @@
-# ساخت پوشه‌ها
-mkdir -p .github/workflows
-
-# ایجاد فایل workflow
-cat > .github/workflows/forex.yml << 'EOF'
 name: Forex Signal Detector
 
 on:
   schedule:
-    # هر 30 دقیقه اجرا شود
+    # هر 30 دقیقه اجرا شود (می‌تونی تغییر بدی)
     - cron: '*/30 * * * *'
   workflow_dispatch:  # امکان اجرای دستی
   push:
@@ -26,6 +21,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
+        cache: 'pip'
         
     - name: Install dependencies
       run: |
@@ -33,6 +29,7 @@ jobs:
         pip install -r requirements.txt
         
     - name: Run Forex Detector
+      id: detector
       run: |
         echo "🔄 شروع تحلیل جفت ارزها..."
         python github_forex_detector.py
@@ -46,9 +43,17 @@ jobs:
           signals.json
           summary.md
         retention-days: 30
-EOF
-
-# آپلود به GitHub
-git add .
-git commit -m "Add GitHub Actions workflow"
-git push
+        
+    - name: Commit and push if signals found
+      run: |
+        if [ -f signals.json ] && [ -s signals.json ]; then
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add signals.json summary.md
+          git commit -m "🤖 Update forex signals - $(date +'%Y-%m-%d %H:%M')"
+          git push
+        else
+          echo "No new signals to commit"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

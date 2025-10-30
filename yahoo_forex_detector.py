@@ -26,7 +26,7 @@ class YahooForexDetector:
         self.signal_count = 0
         
         # تنظیمات ایمیل یاهو - اینجا رو تغییر بده
-        self.email_enabled = False
+        self.email_enabled = True
         self.smtp_server = "smtp.mail.yahoo.com"
         self.smtp_port = 587
         self.email_from = "mohsennil@yahoo.com"  # تغییر بده
